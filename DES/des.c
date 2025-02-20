@@ -96,14 +96,39 @@ void afficher_bin(unsigned long val, int taille)
 
 /* tableau [58, 50, ...] -> le bit 58 est déplacé à la position 1, le 50 à la position 2, ...*/
 // unsigned long permuter(unsigned long serie, int taille)
-unsigned long permuter(unsigned long serie)
+unsigned long permuter(unsigned long serie, char type)
 {
+    int taille;
+    if (type == 'P')
+    {                   // si c'est une permutation pure
+        taille = N / 2; // 32 bits
+    }
+    else
+    {
+        taille = N; // 64 bits
+    }
     unsigned long seriePermut = serie;
 
     // parcours du tableau de permutation
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < taille; i++)
     {
-        int k = permutationD[i];
+        int k;
+        if (type == 'D')
+        { // permutation initiale
+            k = permutationD[i];
+        }
+        else if (type == 'F')
+        { // permutation finale
+            k = permutationF[i];
+        }
+        else if (type == 'P')
+        { // permutation pure
+            k = permutationPure[i];
+        }
+        else
+        { // erreur
+            k = -1;
+        }
         // le bit k est déplacé à la position i
         if (serie & (1ul << k)) // bit k == 1 ?
         {
@@ -119,8 +144,6 @@ unsigned long permuter(unsigned long serie)
 
 unsigned long permuterExpansive(unsigned R0) // R0 = 32 bits
 {
-    printf("Avant permutation exp : ");
-    afficher_bin(R0, N / 2);
     unsigned long R0Expansive = R0;
     for (int i = 0; i < 3 * N / 4; i++)
     {
@@ -135,8 +158,6 @@ unsigned long permuterExpansive(unsigned R0) // R0 = 32 bits
             R0Expansive = R0Expansive & ~(1ul << i); // 11..101..11
         }
     }
-    printf("Permutation expansive : ");
-    afficher_bin(R0Expansive, 3 * N / 4);
     return R0Expansive;
 }
 
@@ -157,11 +178,14 @@ int main()
     }
     afficher_bin(result, N);
 
-    unsigned long int newResult = permuter(result);
+    unsigned long int newResult = permuter(result, 'D');
 
     // partage en 2 bloc de 32 bits M = (L0,R0)
     unsigned R = newResult & 0xFFFFFFFF;
-    unsigned L = (newResult >> 32) & 0xFFFFFFFF;
+    unsigned L = (newResult >> 32) & 0xFFFFFFFF; // -> il va falloir traiter la ensuite
+
+    // permutation expansive
+    unsigned long RExp = permuterExpansive(R);
 
     printf("************************************** Résultat **************************************\n");
     if (newResult == result)
@@ -169,10 +193,6 @@ int main()
         printf("⚠️ La permutation n'a rien changé !\n");
     }
     afficher_bin(newResult, N);
-
-    afficher_bin(L, N / 2);
-    afficher_bin(R, N / 2);
-    unsigned long RExp = permuterExpansive(R);
 
     // Calcul de la clé -> après
     // ou exclusif bloc puis clé
