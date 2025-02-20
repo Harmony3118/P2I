@@ -12,6 +12,10 @@ const int N = 64;
 int permutationD[64];
 int permutationF[64];
 int permutationExpansive[58] = {31, 0, 1, 2, 3, 4, 3, 4, 5, 6, 7, 8, 7, 8, 9, 10, 11, 12, 11, 12, 13, 14, 15, 16, 15, 16, 17, 18, 19, 20, 19, 20, 21, 22, 23, 24, 23, 24, 25, 26, 27, 28, 27, 28, 29, 30, 31, 0};
+int tableS1[4][16] = {{14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7},
+                      {0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8},
+                      {4, 1, 14, 8, 13, 6, 2, 11, 15, 12, 9, 7, 3, 10, 5, 0},
+                      {15, 12, 8, 2, 4, 9, 1, 7, 5, 11, 3, 14, 10, 0, 6, 13}};
 // est ce que les bits sont des int ? -> non
 // l’opérateur « ou exclusif » : ^
 
@@ -127,15 +131,53 @@ int main()
     afficher_bin(R, N / 2);
     unsigned long RExp = permuterExpansive(R);
 
-    // Calcul de la clé
+    // Calcul de la clé -> après
     // ou exclusif bloc puis clé
-    // opération de substitution
-
+    unsigned long RCombi = RExp;
+    // Opération de substitution -> 8 blocs de 6 bits traités par 8 tableaux
+    // le tableau est inutile, on peut utiliser directement la série de bits... -> à modifier
+    // unsigned short blocs[8];
+    unsigned RSuivant = 0; // 32 bits
+    for (int k = 0; k < 8; k++)
+    {
+        // blocs[i] = RCombi & 0x7F;
+        unsigned short tmp = RCombi & 0x7F;
+        printf("bloc 6 bit : ");
+        afficher_bin(tmp, 6);
+        printf("\t");
+        RCombi >>= 6;
+        int i = 0;
+        if (tmp & (1ul << 5))
+            i += 2;
+        if (tmp & (1ul << 0))
+            i += 1;
+        int j = (tmp & 0x1E) >> 1; // 1E = 00011110 = 30
+        // taille complète = 32 = N/2
+        // position actuelle = 32-1-4*k
+        // on décale de 32-4-4*k
+        // RSuivant = (RSuivant << 4)< | (tableS1[i][j] & 0xF); -> pas dans le bon ordre
+        RSuivant |= (tableS1[i][j] & 0xF) << 4 * k;
+        printf("i = %d, j = %d, tabS1 = %d,\t", i, j, tableS1[i][j]);
+        afficher_bin((tableS1[i][j] & 0xF), 4);
+    }
+    printf("Rsuivant : ");
+    afficher_bin(RSuivant, N / 2);
+    // for (int i = 0; i < 8; i++)
+    // {
+    //     printf("Bloc %d : ", i);
+    //     afficher_bin(blocs[i], 6);
+    // }
+    unsigned long serieFinal = RSuivant;
+    serieFinal = (serieFinal << N / 2) | L;
+    printf("serieFinal = ");
+    afficher_bin(serieFinal, N);
     for (int k = 7; k >= 0; k--)
     {
-        texte[k] = newResult & 0xFF;
-        newResult >>= 8;
+        texte[k] = serieFinal & 0xFF;
+        serieFinal >>= 8;
     }
+    printf("serieFinal = ");
+    afficher_bin(serieFinal, N);
     printf("%s\n", texte);
 
     return 0;
