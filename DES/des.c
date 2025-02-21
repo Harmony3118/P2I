@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <time.h>
 
 // char *texte = "Ceci est un texte qui va être chiffré pour vérifier la fonctionalité de mon code";
 // ce texte a une taille de 64 bits (il faudra mieux généraliser)
@@ -9,10 +10,14 @@ unsigned char texte[] = "Texte 8b";
 
 #define N 64
 
+int permutationCle[N - N / 8] = {56, 48, 40, 32, 24, 16, 8, 0, 57, 49, 41, 33, 25, 17, 9, 1, 58, 50, 42, 34, 26, 18, 10, 2, 59, 51, 43, 35, 62, 54, 46, 38, 30, 22, 14, 6, 61, 53, 45, 37, 29, 21, 13, 5, 60, 52, 44, 36, 28, 20, 12, 4, 27, 19, 11, 3};
+int decalageCle[16] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
+
 int permutationD[N] = {57, 49, 41, 33, 25, 17, 9, 1, 59, 51, 43, 35, 27, 19, 11, 3, 61, 53, 45, 37, 29, 21, 13, 5, 63, 55, 47, 39, 31, 23, 15, 7, 56, 48, 40, 32, 24, 16, 8, 0, 58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4, 62, 54, 46, 38, 30, 22, 14, 6};
 int permutationF[N] = {39, 7, 47, 15, 55, 23, 63, 31, 38, 6, 46, 14, 54, 22, 62, 30, 37, 5, 45, 13, 53, 21, 61, 29, 36, 4, 44, 12, 52, 20, 60, 28, 35, 3, 43, 11, 51, 19, 59, 27, 34, 2, 42, 10, 50, 18, 58, 26, 33, 1, 41, 9, 49, 17, 57, 25, 32, 0, 40, 8, 48, 16, 56, 24};
 int permutationPure[N / 2] = {16, 7, 20, 21, 29, 12, 28, 17, 1, 15, 23, 26, 5, 18, 31, 10, 2, 8, 24, 14, 32, 27, 3, 9, 19, 13, 30, 6, 22, 11, 4, 25};
 int permutationExpansive[58] = {31, 0, 1, 2, 3, 4, 3, 4, 5, 6, 7, 8, 7, 8, 9, 10, 11, 12, 11, 12, 13, 14, 15, 16, 15, 16, 17, 18, 19, 20, 19, 20, 21, 22, 23, 24, 23, 24, 25, 26, 27, 28, 27, 28, 29, 30, 31, 0};
+int permutationCompressive[48] = {14, 17, 11, 24, 1, 5, 3, 28, 15, 6, 21, 10, 23, 19, 12, 4, 26, 8, 16, 7, 27, 20, 13, 2, 41, 52, 31, 37, 47, 55, 30, 40, 51, 45, 33, 48, 44, 49, 39, 56, 34, 53, 46, 42, 50, 36, 29, 32};
 int tableS[8][4][16] = {
     {
         {14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7},
@@ -100,14 +105,22 @@ unsigned long permuter(unsigned long serie, char type)
 {
     int taille;
     if (type == 'P')
-    {                   // si c'est une permutation pure
+    {                   // permutation pure
         taille = N / 2; // 32 bits
+    }
+    else if (type == 'C')
+    {
+        taille = 3 * N / 4; // 48 bits
+    }
+    else if (type == 'K')
+    {
+        taille = N - N / 8; // 56 bits
     }
     else
     {
         taille = N; // 64 bits
     }
-    unsigned long seriePermut = serie;
+    unsigned long seriePermut = 0;
 
     // parcours du tableau de permutation
     for (int i = 0; i < taille; i++)
@@ -125,6 +138,14 @@ unsigned long permuter(unsigned long serie, char type)
         { // permutation pure
             k = permutationPure[i];
         }
+        else if (type == 'K')
+        { // permutation de la clé
+            k = permutationCle[i];
+        }
+        else if (type == 'C')
+        {
+            k = permutationCompressive[i];
+        }
         else
         { // erreur
             k = -1;
@@ -135,7 +156,7 @@ unsigned long permuter(unsigned long serie, char type)
             seriePermut = seriePermut | (1ul << i); // 00..010..00
         }
         else
-        {
+        {                                            // est ce vraiment utile ?
             seriePermut = seriePermut & ~(1ul << i); // 11..101..11
         }
     }
@@ -144,7 +165,7 @@ unsigned long permuter(unsigned long serie, char type)
 
 unsigned long permuterExpansive(unsigned R0) // R0 = 32 bits
 {
-    unsigned long R0Expansive = R0;
+    unsigned long R0Expansive = 0;
     for (int i = 0; i < 3 * N / 4; i++)
     {
         int k = permutationExpansive[i];
@@ -158,18 +179,50 @@ unsigned long permuterExpansive(unsigned R0) // R0 = 32 bits
             R0Expansive = R0Expansive & ~(1ul << i); // 11..101..11
         }
     }
-    return R0Expansive;
+    return R0Expansive; // 48 bits = 3*N/4 = N-N/4
+}
+
+unsigned decalerCle(unsigned semiKey, int ronde)
+{
+    unsigned newSemiKey = 0;
+    int k = decalageCle[ronde];
+    for (int i = 0; i < 28; i++)
+    {
+        if (semiKey & (1ul << i))
+        {
+            newSemiKey = newSemiKey | (1ul << (i + k) % 28); // 00..010..00
+        }
+        else
+        {
+            newSemiKey = newSemiKey & ~(1ul << (i + k) % 28); // 11..101..11
+        }
+    }
+    return newSemiKey;
 }
 
 int main()
 {
-    // printf("******************************** Tableau PermutationD ********************************\n");
-    // afficher_tab(permutationD);
-    printf("************************************ Texte initial ***********************************\n");
-    printf("%s\n", texte);
+    // initialisation de la clé         /!\ il faudra vérifier que la clés n'est pas une clé faible
+    int booleen = 0;
+    srand(time(NULL));
+
+    unsigned long key;
+    // while(booleen == 0) {
+    // key = rand() % 0xFFFFFFFFFFFFFFFF;     // 64 bits
+    key = 2048195009 & 0xFFFFFFFFFFFFFFFF; // 64 bits
+    printf("\tclé : \t");
+    afficher_bin(key, N);
+    //     if (verifierCle(key)) {
+    //         booleen = 1;
+    //     }
+    // }
+    key = permuter(key, 'K'); // 56 bits
+    printf("\tclé permut 1 (56b) : ");
+    afficher_bin(key, 56);
 
     // création du tableau de 64 bits -> à terme sera dans une fonction
     // /!\ le texte pourra faire plus de 64 bits, il faudra alors traiter avec plusieurs tableaux
+    printf("texte inir : %s\n", texte);
     unsigned long int result = texte[0];
     for (int k = 0; k < 8; k++)
     {
@@ -184,30 +237,45 @@ int main()
     unsigned R = newResult & 0xFFFFFFFF;
     unsigned L = (newResult >> 32) & 0xFFFFFFFF; // -> il va falloir traiter la ensuite
 
+    // _________________________________________________________________________________________________________________Fonction F
+    // ___________________________________________________________________________________________________________________________
     // permutation expansive
-    unsigned long RExp = permuterExpansive(R);
+    unsigned long RExpansive = permuterExpansive(R);
+    printf("Permutation expansive : ");
+    afficher_bin(RExpansive, 3 * N / 4);
 
-    printf("************************************** Résultat **************************************\n");
-    if (newResult == result)
-    {
-        printf("⚠️ La permutation n'a rien changé !\n");
-    }
-    afficher_bin(newResult, N);
+    // Calcul de la sous-clé
+    unsigned RKey = key & 0xFFFFFFF;
+    unsigned LKey = (key >> 28) & 0xFFFFFFF;
+    printf("\tclé gauche : ");
+    afficher_bin(LKey, 28);
+    printf("\tclé droite : ");
+    afficher_bin(RKey, 28);
+    RKey = decalerCle(RKey, 0); // il faudra changé 0 par le numéro de ronde
+    LKey = decalerCle(LKey, 0); // il faudra changé 0 par le numéro de ronde
+    printf("\tclé gauche décalée : ");
+    afficher_bin(LKey, 28);
+    printf("\tclé droite décalée : ");
+    afficher_bin(RKey, 28);
 
-    // Calcul de la clé -> après
+    key = LKey & 0xFFFFFFF;
+    key = (key << 28) | RKey;
+    printf("\tclé concaténée : ");
+    afficher_bin(key, 56);
+
+    unsigned long sousCle = permuter(key, 'K'); // on est sensé obtenir une clé de
+    printf("\tclé permut 2 (48b) : ");
+    afficher_bin(sousCle, 48);
+
     // ou exclusif bloc puis clé
-    unsigned long RCombi = RExp;
+    unsigned long RCombi = RExpansive;
     // Opération de substitution -> 8 blocs de 6 bits traités par 8 tableaux
-    // le tableau est inutile, on peut utiliser directement la série de bits... -> à modifier
-    // unsigned short blocs[8];
     unsigned RSuivant = 0; // 32 bits
     for (int k = 0; k < 8; k++)
     {
         // blocs[i] = RCombi & 0x7F;
         unsigned short tmp = RCombi & 0x7F;
-        printf("bloc 6 bit : ");
-        afficher_bin(tmp, 6);
-        printf("\t");
+
         RCombi >>= 6;
         int i = 0;
         if (tmp & (1ul << 5))
@@ -220,28 +288,25 @@ int main()
         // on décale de 32-4-4*k
         // RSuivant = (RSuivant << 4)< | (tableS[i][j] & 0xF); -> pas dans le bon ordre
         RSuivant |= (tableS[k][i][j] & 0xF) << 4 * k;
-        printf("i = %d, j = %d, tabS%d = %d,\t", i, j, k, tableS[k][i][j]);
-        afficher_bin((tableS[k][i][j] & 0xF), 4);
     }
-    printf("Rsuivant : ");
+    printf("R substitution : ");
     afficher_bin(RSuivant, N / 2);
-    // for (int i = 0; i < 8; i++)
-    // {
-    //     printf("Bloc %d : ", i);
-    //     afficher_bin(blocs[i], 6);
-    // }
+    // permutation pure
+    RSuivant = permuter(RSuivant, 'P');
+    printf("R Permutation pure : ");
+    afficher_bin(RSuivant, N / 2);
+    // _________________________________________________________________________________________________________________FIN fct F
+    // ___________________________________________________________________________________________________________________________
+
     unsigned long serieFinal = RSuivant;
     serieFinal = (serieFinal << N / 2) | L;
     printf("serieFinal = ");
-    afficher_bin(serieFinal, N);
     for (int k = 7; k >= 0; k--)
     {
         texte[k] = serieFinal & 0xFF;
         serieFinal >>= 8;
     }
-    printf("serieFinal = ");
-    afficher_bin(serieFinal, N);
-    printf("%s\n", texte);
+    printf("texte crypté : %s\n", texte);
 
     return 0;
 }
