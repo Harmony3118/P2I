@@ -12,12 +12,12 @@ unsigned char texte[] = "Texte 8b";
 
 int permutationCle[N - N / 8] = {56, 48, 40, 32, 24, 16, 8, 0, 57, 49, 41, 33, 25, 17, 9, 1, 58, 50, 42, 34, 26, 18, 10, 2, 59, 51, 43, 35, 62, 54, 46, 38, 30, 22, 14, 6, 61, 53, 45, 37, 29, 21, 13, 5, 60, 52, 44, 36, 28, 20, 12, 4, 27, 19, 11, 3};
 int decalageCle[16] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
+int permutationCompressive[48] = {13, 16, 10, 23, 0, 4, 2, 27, 14, 5, 20, 9, 22, 18, 11, 3, 25, 7, 15, 6, 26, 19, 12, 1, 40, 51, 30, 36, 46, 54, 29, 39, 50, 44, 32, 47, 43, 48, 38, 55, 33, 52, 45, 41, 49, 35, 28, 31};
 
 int permutationD[N] = {57, 49, 41, 33, 25, 17, 9, 1, 59, 51, 43, 35, 27, 19, 11, 3, 61, 53, 45, 37, 29, 21, 13, 5, 63, 55, 47, 39, 31, 23, 15, 7, 56, 48, 40, 32, 24, 16, 8, 0, 58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4, 62, 54, 46, 38, 30, 22, 14, 6};
 int permutationF[N] = {39, 7, 47, 15, 55, 23, 63, 31, 38, 6, 46, 14, 54, 22, 62, 30, 37, 5, 45, 13, 53, 21, 61, 29, 36, 4, 44, 12, 52, 20, 60, 28, 35, 3, 43, 11, 51, 19, 59, 27, 34, 2, 42, 10, 50, 18, 58, 26, 33, 1, 41, 9, 49, 17, 57, 25, 32, 0, 40, 8, 48, 16, 56, 24};
-int permutationPure[N / 2] = {16, 7, 20, 21, 29, 12, 28, 17, 1, 15, 23, 26, 5, 18, 31, 10, 2, 8, 24, 14, 32, 27, 3, 9, 19, 13, 30, 6, 22, 11, 4, 25};
+int permutationPure[N / 2] = {15, 6, 19, 20, 28, 11, 27, 16, 0, 14, 22, 25, 4, 17, 30, 9, 1, 7, 23, 13, 31, 26, 2, 8, 18, 12, 29, 5, 21, 10, 3, 24};
 int permutationExpansive[58] = {31, 0, 1, 2, 3, 4, 3, 4, 5, 6, 7, 8, 7, 8, 9, 10, 11, 12, 11, 12, 13, 14, 15, 16, 15, 16, 17, 18, 19, 20, 19, 20, 21, 22, 23, 24, 23, 24, 25, 26, 27, 28, 27, 28, 29, 30, 31, 0};
-int permutationCompressive[48] = {14, 17, 11, 24, 1, 5, 3, 28, 15, 6, 21, 10, 23, 19, 12, 4, 26, 8, 16, 7, 27, 20, 13, 2, 41, 52, 31, 37, 47, 55, 30, 40, 51, 45, 33, 48, 44, 49, 39, 56, 34, 53, 46, 42, 50, 36, 29, 32};
 int tableS[8][4][16] = {
     {
         {14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7},
@@ -143,7 +143,7 @@ unsigned long permuter(unsigned long serie, char type)
             k = permutationCle[i];
         }
         else if (type == 'C')
-        {
+        { // permutation compressive
             k = permutationCompressive[i];
         }
         else
@@ -229,13 +229,21 @@ int main()
         result <<= 8;
         result |= texte[k];
     }
-    afficher_bin(result, N);
 
+    printf("serie : ");
+    afficher_bin(result, N);
     unsigned long int newResult = permuter(result, 'D');
+    printf("serie permuté init : ");
+    afficher_bin(newResult, N);
+    int ronde = 0; // a changé quand on implémentera les rondes
 
     // partage en 2 bloc de 32 bits M = (L0,R0)
     unsigned R = newResult & 0xFFFFFFFF;
     unsigned L = (newResult >> 32) & 0xFFFFFFFF; // -> il va falloir traiter la ensuite
+    printf("L = ");
+    afficher_bin(L, N / 2);
+    printf("R = ");
+    afficher_bin(R, N / 2);
 
     // _________________________________________________________________________________________________________________Fonction F
     // ___________________________________________________________________________________________________________________________
@@ -263,20 +271,24 @@ int main()
     printf("\tclé concaténée : ");
     afficher_bin(key, 56);
 
-    unsigned long sousCle = permuter(key, 'K'); // on est sensé obtenir une clé de
+    unsigned long sousCle = permuter(key, 'C'); // on est sensé obtenir une clé de
     printf("\tclé permut 2 (48b) : ");
     afficher_bin(sousCle, 48);
 
     // ou exclusif bloc puis clé
-    unsigned long RCombi = RExpansive;
+    unsigned long RCombi = RExpansive ^ sousCle;
+    printf("RExpan ^ clé : ");
+    afficher_bin(RCombi, 3 * N / 4);
+    // .......................................................................................
     // Opération de substitution -> 8 blocs de 6 bits traités par 8 tableaux
     unsigned RSuivant = 0; // 32 bits
+
     for (int k = 0; k < 8; k++)
     {
-        // blocs[i] = RCombi & 0x7F;
-        unsigned short tmp = RCombi & 0x7F;
-
-        RCombi >>= 6;
+        int d = 6 * (8 - k - 1);
+        unsigned short tmp = (RCombi & (0x3FL << d)) >> d;
+        printf("Entrée S%d : ", k);
+        afficher_bin(tmp, 6);
         int i = 0;
         if (tmp & (1ul << 5))
             i += 2;
@@ -287,7 +299,10 @@ int main()
         // position actuelle = 32-1-4*k
         // on décale de 32-4-4*k
         // RSuivant = (RSuivant << 4)< | (tableS[i][j] & 0xF); -> pas dans le bon ordre
-        RSuivant |= (tableS[k][i][j] & 0xF) << 4 * k;
+        printf("Sortie S%d : ", k);
+        afficher_bin(tableS[ronde][i][j], 4);
+        RSuivant <<= 4;
+        RSuivant |= tableS[ronde][i][j];
     }
     printf("R substitution : ");
     afficher_bin(RSuivant, N / 2);
@@ -298,9 +313,13 @@ int main()
     // _________________________________________________________________________________________________________________FIN fct F
     // ___________________________________________________________________________________________________________________________
 
-    unsigned long serieFinal = RSuivant;
-    serieFinal = (serieFinal << N / 2) | L;
-    printf("serieFinal = ");
+    unsigned long serieFinal = R;
+    serieFinal = (serieFinal << N / 2) | L ^ RSuivant;
+    printf("Concaténation R-L : ");
+    afficher_bin(serieFinal, N);
+    serieFinal = permuter(serieFinal, 'F');
+    printf("Série Permutation finale : ");
+    afficher_bin(serieFinal, N);
     for (int k = 7; k >= 0; k--)
     {
         texte[k] = serieFinal & 0xFF;
