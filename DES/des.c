@@ -200,86 +200,43 @@ unsigned decalerCle(unsigned semiKey, int ronde)
     return newSemiKey;
 }
 
-int main()
+void calculerCle(unsigned long *key, int ronde)
 {
-    // initialisation de la clé         /!\ il faudra vérifier que la clés n'est pas une clé faible
-    int booleen = 0;
-    srand(time(NULL));
-
-    unsigned long key;
-    // while(booleen == 0) {
-    // key = rand() % 0xFFFFFFFFFFFFFFFF;     // 64 bits
-    key = 2048195009 & 0xFFFFFFFFFFFFFFFF; // 64 bits
-    printf("\tclé : \t");
-    afficher_bin(key, N);
-    //     if (verifierCle(key)) {
-    //         booleen = 1;
-    //     }
-    // }
-    key = permuter(key, 'K'); // 56 bits
-    printf("\tclé permut 1 (56b) : ");
-    afficher_bin(key, 56);
-
-    // création du tableau de 64 bits -> à terme sera dans une fonction
-    // /!\ le texte pourra faire plus de 64 bits, il faudra alors traiter avec plusieurs tableaux
-    printf("texte inir : %s\n", texte);
-    unsigned long int result = texte[0];
-    for (int k = 0; k < 8; k++)
-    {
-        result <<= 8;
-        result |= texte[k];
-    }
-
-    printf("serie : ");
-    afficher_bin(result, N);
-    unsigned long int newResult = permuter(result, 'D');
-    printf("serie permuté init : ");
-    afficher_bin(newResult, N);
-    int ronde = 0; // a changé quand on implémentera les rondes
-
-    // partage en 2 bloc de 32 bits M = (L0,R0)
-    unsigned R = newResult & 0xFFFFFFFF;
-    unsigned L = (newResult >> 32) & 0xFFFFFFFF; // -> il va falloir traiter la ensuite
-    printf("L = ");
-    afficher_bin(L, N / 2);
-    printf("R = ");
-    afficher_bin(R, N / 2);
-
-    // _________________________________________________________________________________________________________________Fonction F
-    // ___________________________________________________________________________________________________________________________
-    // permutation expansive
-    unsigned long RExpansive = permuterExpansive(R);
-    printf("Permutation expansive : ");
-    afficher_bin(RExpansive, 3 * N / 4);
 
     // Calcul de la sous-clé
-    unsigned RKey = key & 0xFFFFFFF;
-    unsigned LKey = (key >> 28) & 0xFFFFFFF;
+    unsigned RKey = *key & 0xFFFFFFF;
+    unsigned LKey = (*key >> 28) & 0xFFFFFFF;
     printf("\tclé gauche : ");
     afficher_bin(LKey, 28);
     printf("\tclé droite : ");
     afficher_bin(RKey, 28);
-    RKey = decalerCle(RKey, 0); // il faudra changé 0 par le numéro de ronde
-    LKey = decalerCle(LKey, 0); // il faudra changé 0 par le numéro de ronde
+    RKey = decalerCle(RKey, ronde);
+    LKey = decalerCle(LKey, ronde);
     printf("\tclé gauche décalée : ");
     afficher_bin(LKey, 28);
     printf("\tclé droite décalée : ");
     afficher_bin(RKey, 28);
 
-    key = LKey & 0xFFFFFFF;
-    key = (key << 28) | RKey;
+    *key = LKey & 0xFFFFFFF;
+    *key = (*key << 28) | RKey;
     printf("\tclé concaténée : ");
-    afficher_bin(key, 56);
+    afficher_bin(*key, 56);
+}
 
-    unsigned long sousCle = permuter(key, 'C'); // on est sensé obtenir une clé de
-    printf("\tclé permut 2 (48b) : ");
-    afficher_bin(sousCle, 48);
+unsigned fonctionF(unsigned R, unsigned long sousCle, int ronde)
+{
+    // permutation expansive
+    unsigned long RExpansive = permuterExpansive(R); // 48 bits
+    printf("Permutation expansive : ");
+    afficher_bin(RExpansive, 3 * N / 4);
 
     // ou exclusif bloc puis clé
+    printf("\tsous clé : ");
+    afficher_bin(sousCle, 3 * N / 4);
     unsigned long RCombi = RExpansive ^ sousCle;
     printf("RExpan ^ clé : ");
     afficher_bin(RCombi, 3 * N / 4);
-    // .......................................................................................
+
     // Opération de substitution -> 8 blocs de 6 bits traités par 8 tableaux
     unsigned RSuivant = 0; // 32 bits
 
@@ -310,14 +267,84 @@ int main()
     RSuivant = permuter(RSuivant, 'P');
     printf("R Permutation pure : ");
     afficher_bin(RSuivant, N / 2);
-    // _________________________________________________________________________________________________________________FIN fct F
-    // ___________________________________________________________________________________________________________________________
 
-    unsigned long serieFinal = R;
-    serieFinal = (serieFinal << N / 2) | L ^ RSuivant;
-    printf("Concaténation R-L : ");
-    afficher_bin(serieFinal, N);
-    serieFinal = permuter(serieFinal, 'F');
+    return RSuivant;
+}
+
+int main()
+{
+    // initialisation de la clé         /!\ il faudra vérifier que la clés n'est pas une clé faible
+    int booleen = 0;
+    srand(time(NULL));
+
+    unsigned long key;
+    // while (booleen == 0)
+    // {
+    // key = rand() % 0xFFFFFFFFFFFFFFFF; // 64 bits   // -> avant ronde
+    key = 2048195009 & 0xFFFFFFFFFFFFFFFF; // 64 bits
+    printf("\tclé : \t");
+    afficher_bin(key, N);
+    //     if (verifierCle(key))
+    //     {
+    //         booleen = 1;
+    //     }
+    // }
+    key = permuter(key, 'K'); // 56 bits        // -> avant ronde
+    printf("\tclé permut 1 (56b) : ");
+    afficher_bin(key, 56);
+
+    // création du tableau de 64 bits -> à terme sera dans une fonction
+    // /!\ le texte pourra faire plus de 64 bits, il faudra alors traiter avec plusieurs tableaux
+    printf("texte init : %s\n", texte);
+    unsigned long int result = texte[0]; // -> avant ronde       // a automatiser sur tout le texte
+    for (int k = 0; k < 8; k++)
+    {
+        result <<= 8;
+        result |= texte[k];
+    }
+
+    printf("serie : ");
+    afficher_bin(result, N);
+    unsigned long int newResult = permuter(result, 'D'); // -> avant ronde
+    printf("serie permuté init : ");
+    afficher_bin(newResult, N);
+
+    for (int ronde = 0; ronde < 16; ronde++)
+    {
+        int ronde = 0; // a changé quand on implémentera les rondes
+
+        // partage en 2 bloc de 32 bits M = (L0,R0)
+        unsigned R = newResult & 0xFFFFFFFF;
+        unsigned L = (newResult >> 32) & 0xFFFFFFFF; // -> il va falloir traiter la ensuite
+        printf("L = ");
+        afficher_bin(L, N / 2);
+        printf("R = ");
+        afficher_bin(R, N / 2);
+
+        // _________________________________________________________________________________________________________________Fonction F
+        // ___________________________________________________________________________________________________________________________
+
+        calculerCle(&key, ronde);
+        printf("\tnouvelle clé : ");
+        afficher_bin(key, 56);
+
+        unsigned long sousCle = permuter(key, 'C'); // on est sensé obtenir une clé de
+        printf("\tclé permut 2 (48b) : ");
+        afficher_bin(sousCle, 48);
+
+        unsigned RSuivant = fonctionF(R, sousCle, ronde);
+
+        // .......................................................................................
+
+        // _________________________________________________________________________________________________________________FIN fct F
+        // ___________________________________________________________________________________________________________________________
+
+        newResult = R;
+        newResult = (newResult << N / 2) | L ^ RSuivant;
+        printf("Concaténation R-L : ");
+        afficher_bin(newResult, N);
+    }
+    unsigned long serieFinal = permuter(newResult, 'F');
     printf("Série Permutation finale : ");
     afficher_bin(serieFinal, N);
     for (int k = 7; k >= 0; k--)
