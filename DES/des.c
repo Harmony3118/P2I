@@ -182,7 +182,7 @@ unsigned decalerCle(unsigned semiKey, int ronde)
 }
 
 // Décalage de la clé pendant la ronde
-void calculerCleDecale(unsigned long *key, int ronde)
+void calculerNouvelleCle(unsigned long *key, int ronde)
 {
     unsigned RKey = *key & 0xFFFFFFF;
     unsigned LKey = (*key >> 28) & 0xFFFFFFF;
@@ -264,16 +264,16 @@ int main()
         {
             // partage en 2 bloc de 32 bits M = (L0,R0)
             unsigned R = newResult & 0xFFFFFFFF;
-            unsigned L = (newResult >> 32) & 0xFFFFFFFF; // -> il va falloir traiter la ensuite
+            unsigned L = (newResult >> 32) & 0xFFFFFFFF;
 
-            calculerCleDecale(&key, ronde); // 56 bits
-
+            calculerNouvelleCle(&key, ronde);           // 56 bits
             unsigned long sousCle = permuter(key, 'C'); // 48 bits
 
             unsigned RSuivant = fonctionF(R, sousCle);
 
+            // concaténation
             newResult = R;
-            newResult = (newResult << N / 2) | L ^ RSuivant;
+            newResult = (newResult << N / 2) | (L ^ RSuivant);
         }
         unsigned long serieFinal = permuter(newResult, 'F');
         printf("Série Permutation finale : ");
