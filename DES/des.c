@@ -11,6 +11,7 @@ unsigned char texte_c[] = "Ceci est un texte qui va être chiffré pour vérifie
 // unsigned char texte_c[] = "12345678";
 
 #define N_i 64
+#define nbCleFaible_i 64
 
 int permutationCle[N_i - N_i / 8] = {56, 48, 40, 32, 24, 16, 8, 0, 57, 49, 41, 33, 25, 17, 9, 1, 58, 50, 42, 34, 26, 18, 10, 2, 59, 51, 43, 35, 62, 54, 46, 38, 30, 22, 14, 6, 61, 53, 45, 37, 29, 21, 13, 5, 60, 52, 44, 36, 28, 20, 12, 4, 27, 19, 11, 3};
 int decalageCle[16] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
@@ -70,7 +71,6 @@ int tableS[8][4][16] = {
         {2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11},
     }};
 
-#define nbCleFaible_i 64
 unsigned long cleFaible[nbCleFaible_i] = {
     0x0101010101010101, 0x1F1F1F1F0E0E0E0E,
     0xE0E0E0E0F1F1F1F1, 0xFEFEFEFEFEFEFEFE,
@@ -245,7 +245,7 @@ unsigned fonctionF(unsigned R_i, unsigned long sousCle_l)
     {
         int d = 6 * (8 - k - 1);
         int i = 0;
-        
+
         unsigned short tmp_s = (RCombi_l & (0x3FL << d)) >> d;
         // le premier et dernier bits forment un nb = ligne
         if (tmp_s & (1ul << 5))
