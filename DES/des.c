@@ -111,7 +111,6 @@ void afficher_bin(unsigned long val_l, int taille_i)
 {
     for (int i = taille_i - 1; i >= 0; i--)
     {
-        // printf("%d", !!(val_l & (1u << i)));
         printf("%lu", (val_l >> i) & 1);
         if (i % 8 == 0)
             printf(" ");
@@ -122,6 +121,7 @@ void afficher_bin(unsigned long val_l, int taille_i)
 /* tableau [58, 50, ...] -> le bit 58 est déplacé à la position 1, le 50 à la position 2, ...*/
 unsigned long permuter(unsigned long serie_l, char type_c)
 {
+    unsigned long seriePermut_l = 0;
     int taille_i;
     if (type_c == 'P')
     {                       // permutation pure
@@ -139,7 +139,6 @@ unsigned long permuter(unsigned long serie_l, char type_c)
     {
         taille_i = N_i; // 64 bits
     }
-    unsigned long seriePermut_l = 0;
 
     // parcours du tableau de permutation
     for (int i = 0; i < taille_i; i++)
@@ -245,9 +244,10 @@ unsigned fonctionF(unsigned R_i, unsigned long sousCle_l)
     for (int k = 0; k < 8; k++)
     {
         int d = 6 * (8 - k - 1);
+        int i = 0;
+        
         unsigned short tmp_s = (RCombi_l & (0x3FL << d)) >> d;
         // le premier et dernier bits forment un nb = ligne
-        int i = 0;
         if (tmp_s & (1ul << 5))
             i += 2;
         if (tmp_s & (1ul << 0))
@@ -277,7 +277,7 @@ bool verifierCle(unsigned long key_l)
 
 int main()
 {
-    // initialisation de la clé         /!\ il faudra vérifier que la clés n'est pas une clé faible
+    // initialisation de la clé
     srand(time(NULL));
 
     unsigned long key_l = rand() % 0xFFFFFFFFFFFFFFFF; // 64 bits
