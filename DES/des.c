@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <time.h>
 #include <string.h>
+#include <stdbool.h>
 
 unsigned char texte[] = "Ceci est un texte qui va être chiffré pour vérifier la fonctionalité de mon code";
 // ce texte a une taille de 64 bits (il faudra mieux généraliser)
@@ -68,6 +69,43 @@ int tableS[8][4][16] = {
         {7, 11, 4, 1, 9, 12, 14, 2, 0, 6, 10, 13, 15, 3, 5, 8},
         {2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11},
     }};
+
+#define nbCleFaible 64
+unsigned long cleFaible[nbCleFaible] = {
+    0x0101010101010101, 0x1F1F1F1F0E0E0E0E,
+    0xE0E0E0E0F1F1F1F1, 0xFEFEFEFEFEFEFEFE,
+
+    0x01FE01FE01FE01FE, 0xFE01FE01FE01FE01,
+    0x1FE01FE00EF10EF1, 0xE01FE01FF10EF10E,
+    0x01E001E001F101F1, 0xE001E001F101F101,
+    0x1FFE1FFE0EFE0EFE, 0xFE1FFE1FFE0EFE0E,
+    0x011F011F010E010E, 0x1F011F010E010E01,
+    0xE0FEE0FEF1FEF1FE, 0xFEE0FEE0FEF1FEF1,
+
+    0x1F1F01010E0E0101, 0xE00101E0F10101F1,
+    0x011F1F01010E0E01, 0xFE1F01E0FE0E01F1,
+    0x1F01011F0E01010E, 0xFE011FE0FE010EF1,
+    0x01011F1F01010E0E, 0xE01F1FE0F10E0EF1,
+    0xE0E00101F1F10101, 0xFE0101FEFE0101FE,
+    0xFEFE0101FEFE0101, 0xE01F01FEF10E01FE,
+    0xFEE01F01FEF10E01, 0xE0011FFEF1010EFE,
+    0xE0FE1F01F1FE0E01, 0xFE1F1FFEFE0E0EFE,
+    0xFEE0011FFEF1010E, 0x1FFE01E00EFE01F1,
+    0xE0FE011FF1FE010E, 0x01FE1FE001FE0EF1,
+    0xE0E01F1FF1F10E0E, 0x1FE001FE0EF101FE,
+    0xFEFE1F1FFEFE0E0E, 0x01E01FFE01F10EFE,
+    0xFE1FE001FE0EF101, 0x0101E0E00101F1F1,
+    0xE01FFE01F10EFE01, 0x1F1FE0E00E0EF1F1,
+    0xFE01E01FFE01F10E, 0x1F01FEE00E01FEF1,
+    0xE001FE1FF101FE0E, 0x011FFEE0010EFEF1,
+    0x01E0E00101F1F101, 0x1F01E0FE0E01F1FE,
+    0x1FFEE0010EFEF001, 0x011FE0FE010EF1FE,
+    0x1FE0FE010EF1FE01, 0x0101FEFE0101FEFE,
+    0x01FEFE0101FEFE01, 0x1F1FFEFE0E0EFEFE,
+    0x1FE0E01F0EF1F10E, 0xFEFEE0E0FEFEF1F1,
+    0x01FEE01F01FEF10E, 0xE0FEFEE0F1FEFEF1,
+    0x01E0FE1F01F1FE0E, 0xFEE0E0FEFEF1F1FE,
+    0x1FFEFE1F0EFEFE0E, 0xE0E0FEFEF1F1FEFE};
 
 void afficher_bin(unsigned long val, int taille)
 {
@@ -225,22 +263,32 @@ unsigned fonctionF(unsigned R, unsigned long sousCle)
     return RSuivant;
 }
 
+bool verifierCle(unsigned long key)
+{
+    for (int i = 0; i < nbCleFaible; i++)
+    {
+        if (key == cleFaible[i])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 int main()
 {
     // initialisation de la clé         /!\ il faudra vérifier que la clés n'est pas une clé faible
-    int booleen = 0;
     srand(time(NULL));
 
-    unsigned long key;
-    // while (booleen == 0)
-    // {
-    key = rand() % 0xFFFFFFFFFFFFFFFF; // 64 bits   // -> avant ronde
-    // key = 2048195009 & 0xFFFFFFFFFFFFFFFF; // 64 bits
-    //     if (verifierCle(key))
-    //     {
-    //         booleen = 1;
-    //     }
-    // }
+    unsigned long key = rand() % 0xFFFFFFFFFFFFFFFF; // 64 bits
+    // vérification clé faible
+    while (!verifierCle(key))
+    {
+        key = rand() % 0xFFFFFFFFFFFFFFFF; // 64 bits
+        // key = 2048195009 & 0xFFFFFFFFFFFFFFFF; // 64 bits
+    }
+    // utilité des bits de parité ?
+    // permutation de la clé en ignorant les bits de parité
     key = permuter(key, 'K'); // 56 bits
 
     int tailleTexte = strlen(texte);
@@ -266,7 +314,8 @@ int main()
             unsigned R = newResult & 0xFFFFFFFF;
             unsigned L = (newResult >> 32) & 0xFFFFFFFF;
 
-            calculerNouvelleCle(&key, ronde);           // 56 bits
+            calculerNouvelleCle(&key, ronde); // 56 bits
+            // permutation compressive
             unsigned long sousCle = permuter(key, 'C'); // 48 bits
 
             unsigned RSuivant = fonctionF(R, sousCle);
@@ -275,6 +324,7 @@ int main()
             newResult = R;
             newResult = (newResult << N / 2) | (L ^ RSuivant);
         }
+        // permutation finale
         unsigned long serieFinal = permuter(newResult, 'F');
         printf("Série Permutation finale : ");
         afficher_bin(serieFinal, N);
